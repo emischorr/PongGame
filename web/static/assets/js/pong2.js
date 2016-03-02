@@ -58,6 +58,7 @@ document.updateState = function(state) {
 	for(var i = 1; i <= Object.keys(state.paddles).length; i++) {
 		p = paddles[i];
 		// console.log("paddle "+i+": "+state.paddles["p"+i].x)
+		p.w = state.paddles["p"+i].len;
 		p.x = state.paddles["p"+i].x - p.w/2;
 	}
 

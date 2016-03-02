@@ -7,6 +7,7 @@ defmodule Pong.GameServer do
   @paddle_speed 20
   @board_height 500
   @board_width 700
+  @ball_radius 5
 
   @start_ball %{x: 50, y: 50, vx: 2, vy: 2}
 
@@ -137,10 +138,15 @@ defmodule Pong.GameServer do
 
   # game loop
   defp update(state) do
-    state
-    |> move_ball
-    |> calculate_direction
-    |> broadcast
+    if state[:game][:running] do
+      state
+      |> move_ball
+      |> check_points
+      |> calculate_direction
+      |> broadcast
+    else
+      state
+    end
   end
 
   defp move_ball(state) do
@@ -151,23 +157,45 @@ defmodule Pong.GameServer do
     end
   end
 
+  defp check_points(state) do
+    state
+  end
+
   defp calculate_direction(state) do
     case ball_collides?(state) do
-      {:collision, :top} -> update_in state[:ball], &(%{x: &1.x, y: &1.y, vx: &1.vx, vy: &1.vy * -1})
-      {:collision, :bottom} -> update_in state[:ball], &(%{x: &1.x, y: &1.y, vx: &1.vx, vy: &1.vy * -1})
-      {:collision, :right} -> update_in state[:ball], &(%{x: &1.x, y: &1.y, vx: &1.vx * -1, vy: &1.vy})
-      {:collision, :left} -> update_in state[:ball], &(%{x: &1.x, y: &1.y, vx: &1.vx * -1, vy: &1.vy})
+      {:collision, :top, _} -> update_in state[:ball], &(%{x: &1.x, y: &1.y, vx: &1.vx, vy: &1.vy * -1})
+      {:collision, :bottom, _} -> update_in state[:ball], &(%{x: &1.x, y: &1.y, vx: &1.vx, vy: &1.vy * -1})
+      {:collision, :right, _} -> update_in state[:ball], &(%{x: &1.x, y: &1.y, vx: &1.vx * -1, vy: &1.vy})
+      {:collision, :left, _} -> update_in state[:ball], &(%{x: &1.x, y: &1.y, vx: &1.vx * -1, vy: &1.vy})
       _ -> state
     end
   end
 
-  defp ball_collides?(%{paddles: paddles, ball: ball} = state) do
-    collision = case ball do
-      %{x: x, y: _} when x <= 0 -> {:collision, :left}
-      %{x: _, y: y} when y <= 0 -> {:collision, :top}
-      %{x: x, y: _} when x >= @board_width -> {:collision, :right}
-      %{x: _, y: y} when y >= @board_height -> {:collision, :bottom}
-      _ -> {:no_collision}
+  defp ball_collides_wall?(%{paddles: paddles, ball: ball} = state) do
+    collision = case {ball, Map.values(paddles)} do
+      # {%{x: x, y: y}, [%{x: px, y: py}]} when y in @board_height-10..@board_height and x in px-50..px+50 -> Logger.debug "hit"; {:collision, :bottom}
+      {%{x: x, y: _}, _} when x <= 0 + @ball_radius -> {:collision, :left, :no}
+      {%{x: _, y: y}, _} when y <= 0 + @ball_radius -> {:collision, :top, :no}
+      {%{x: x, y: _}, _} when x >= @board_width - @ball_radius -> {:collision, :right, :no}
+      {%{x: _, y: y}, _} when y >= @board_height - @ball_radius -> {:collision, :bottom, :no}
+      {%{x: x, y: y}, _} -> {:no_wall, x, y}
+    end
+  end
+
+  defp ball_collides?(%{paddles: paddles} = state) do
+    case ball_collides_wall?(state) do
+      {:collision, side, _} -> {:collision, side, :no}
+      {:no_wall, x, y} ->
+        collisions = for {k, v} <- paddles do
+          case {x, y, v.x, v.y, v.len} do
+            {x, y, px, py, plen} when py == @board_height and y in @board_height-10..@board_height and x in round(px)-round(plen/2)..round(px)+round(plen/2) ->
+              Logger.debug "hit #{k}"; {:collision, :bottom, k}
+            {x, y, px, py, plen} when py == 0 and y in 0..10 and x in round(px)-round(plen/2)..round(px)+round(plen/2) ->
+              Logger.debug "hit #{k}"; {:collision, :top, k}
+            _ -> {:no_collision}
+          end
+        end
+        Enum.find collisions, {:no_collision}, fn x -> hd(Tuple.to_list(x)) == :collision end
     end
   end
 
