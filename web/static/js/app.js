@@ -60,7 +60,7 @@ class App {
     })
 
     chan.on("state:update", state => {
-      console.log("update")
+      // console.log("update")
       document.updateState(state)
     })
 

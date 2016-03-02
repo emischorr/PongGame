@@ -376,6 +376,7 @@ function animloop() {
 function startScreen() {
 	draw();
 	// startBtn.draw();
+	animloop();
 }
 
 // On button click (Restart and start)

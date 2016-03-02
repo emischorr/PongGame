@@ -8,6 +8,8 @@ defmodule Pong.GameServer do
   @board_height 500
   @board_width 700
 
+  @start_ball %{x: 50, y: 50, vx: 2, vy: 2}
+
   ### public api
   def start_link(game) do
     GenServer.start_link(__MODULE__, [], name: game)
@@ -23,6 +25,11 @@ defmodule Pong.GameServer do
       _pid ->
         GenServer.call(p_name, {:join, user})
     end
+  end
+
+  def leave_game(name, user) do
+    p_name = String.to_atom(name)
+    GenServer.call(p_name, {:leave, user})
   end
 
   def move(game, player, direction) do
@@ -42,7 +49,7 @@ defmodule Pong.GameServer do
     state = %{
       players: %{},
       paddles: %{p1: %{x: 350, y: @board_height}, p2: %{x: 350, y: 0}},
-      ball: %{x: 50, y: 50, vx: 2, vy: 2},
+      ball: @start_ball,
       game: %{running: false}
     }
     schedule_next_update
@@ -56,6 +63,11 @@ defmodule Pong.GameServer do
     {:reply, new_state, new_state}
   end
 
+  def handle_call({:leave, user}, _from, state) do
+    new_state = state |> leave(user)
+    {:reply, new_state, new_state}
+  end
+
   def handle_call({:move, player, direction}, _from, state) do
     new_pos_fun = case direction do
       :right -> &(&1 + @paddle_speed)
@@ -66,8 +78,7 @@ defmodule Pong.GameServer do
   end
 
   def handle_call(:pause, _from, state) do
-    update_in state[:game][:running], &(!&1)
-    {:reply, state, state}
+    {:reply, %{}, pause(state)}
   end
 
   def handle_call(:current_state, _from, state) do
@@ -87,6 +98,7 @@ defmodule Pong.GameServer do
 
   ### internal logic
   defp join(state, user) do
+    Logger.debug "Joining user #{user}... [current players: #{player_count(state)}]"
     case player_count(state) do
       0 -> put_in state[:players][:p1], user
       1 -> put_in state[:players][:p2], user
@@ -95,10 +107,11 @@ defmodule Pong.GameServer do
   end
 
   defp leave(state, user) do
+    Logger.debug "User leaving... [current players: #{player_count(state)}]"
     #TODO: remove correct user/player
     case player_count(state) do
-      2 -> Map.delete state[:players], :p2
-      1 -> Map.delete state[:players], :p1
+      2 -> update_in(state[:players], &Map.delete(&1, :p2))
+      1 -> update_in(state[:players], &Map.delete(&1, :p1)) |> stop
       _ -> state
     end
 
@@ -109,11 +122,22 @@ defmodule Pong.GameServer do
   end
 
   defp start(state) do
-    if player_count(state) > 0 do
-      put_in state[:game][:running], true
+    if !state[:game][:running] && player_count(state) > 0 do
+      Logger.debug "Starting game... [current players: #{player_count(state)}]"
+      state = put_in(state[:ball], @start_ball)
+      put_in(state[:game][:running], true)
     else
       state
     end
+  end
+
+  defp stop(state) do
+    put_in state[:game][:running], false
+  end
+
+  defp toggle_pause(state) do
+    Logger.debug "Game #{state[:game][:running] && "unpaused" || "paused" }"
+    update_in state[:game][:running], &(!&1)
   end
 
   # game loop
@@ -125,7 +149,7 @@ defmodule Pong.GameServer do
   end
 
   defp move_ball(state) do
-    if (state[:game][:running]) do
+    if state[:game][:running] do
       update_in state[:ball], &(%{x: &1.x + &1.vx, y: &1.y + &1.vy, vx: &1.vx, vy: &1.vy})
     else
       state
