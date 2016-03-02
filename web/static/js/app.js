@@ -45,6 +45,9 @@ class App {
 
     $(document).off("keydown").on("keydown", e => {
       // alert("key "+e.keyCode)
+      if (e.keyCode == 19) {
+        chan.push("game:pause", {})
+      }
       if (e.keyCode == 65) {
         chan.push("move:left", {})
       }

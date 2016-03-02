@@ -48,7 +48,7 @@ defmodule Pong.GameServer do
   def init(_options) do
     state = %{
       players: %{},
-      paddles: %{p1: %{x: 350, y: @board_height}, p2: %{x: 350, y: 0}},
+      paddles: %{},
       ball: @start_ball,
       game: %{running: false}
     }
@@ -78,7 +78,7 @@ defmodule Pong.GameServer do
   end
 
   def handle_call(:pause, _from, state) do
-    {:reply, %{}, pause(state)}
+    {:reply, %{}, toggle_pause(state)}
   end
 
   def handle_call(:current_state, _from, state) do
@@ -99,11 +99,7 @@ defmodule Pong.GameServer do
   ### internal logic
   defp join(state, user) do
     Logger.debug "Joining user #{user}... [current players: #{player_count(state)}]"
-    case player_count(state) do
-      0 -> put_in state[:players][:p1], user
-      1 -> put_in state[:players][:p2], user
-      _ -> state
-    end
+    state |> add_player(user)
   end
 
   defp leave(state, user) do
@@ -114,7 +110,6 @@ defmodule Pong.GameServer do
       1 -> update_in(state[:players], &Map.delete(&1, :p1)) |> stop
       _ -> state
     end
-
   end
 
   defp player_count(state) do
@@ -136,7 +131,7 @@ defmodule Pong.GameServer do
   end
 
   defp toggle_pause(state) do
-    Logger.debug "Game #{state[:game][:running] && "unpaused" || "paused" }"
+    Logger.debug "Game #{state[:game][:running] && "paused" || "unpaused" }"
     update_in state[:game][:running], &(!&1)
   end
 
@@ -156,7 +151,7 @@ defmodule Pong.GameServer do
     end
   end
 
-  def calculate_direction(state) do
+  defp calculate_direction(state) do
     case ball_collides?(state) do
       {:collision, :top} -> update_in state[:ball], &(%{x: &1.x, y: &1.y, vx: &1.vx, vy: &1.vy * -1})
       {:collision, :bottom} -> update_in state[:ball], &(%{x: &1.x, y: &1.y, vx: &1.vx, vy: &1.vy * -1})
@@ -167,7 +162,7 @@ defmodule Pong.GameServer do
   end
 
   defp ball_collides?(%{paddles: paddles, ball: ball} = state) do
-    case ball do
+    collision = case ball do
       %{x: x, y: _} when x <= 0 -> {:collision, :left}
       %{x: _, y: y} when y <= 0 -> {:collision, :top}
       %{x: x, y: _} when x >= @board_width -> {:collision, :right}
@@ -177,12 +172,33 @@ defmodule Pong.GameServer do
   end
 
   defp broadcast(state) do
-    Pong.Endpoint.broadcast "games:public", "state:update", state
+    if state[:game][:running] do
+      Pong.Endpoint.broadcast "games:public", "state:update", state
+    end
     state
   end
 
   defp schedule_next_update do
     Process.send_after(self(), :update, @update_time)
+  end
+
+  defp add_player(%{players: players} = state, user) do
+    player = Enum.find [:p1, :p2, :p3, :p4], fn player_pos -> !Map.has_key? players, player_pos end
+    case player do
+      nil -> state
+      p ->
+        state = put_in state[:players][p], user
+        put_in state[:paddles][p], create_paddle(p)
+    end
+  end
+
+  defp create_paddle(player) when player in [:p1, :p2, :p3, :p4] do
+    case player do
+      :p1 -> %{x: @board_width/2, y: @board_height, pos: :bottom, len: 100}
+      :p2 -> %{x: @board_width/2, y: 0, pos: :top, len: 100}
+      :p3 -> %{x: 0, y: @board_height/2, pos: :left, len: 100}
+      :p4 -> %{x: @board_width, y: @board_height/2, pos: :right, len: 100}
+    end
   end
 
 end

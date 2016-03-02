@@ -29,8 +29,13 @@ defmodule Pong.GameChannel do
     {:reply, :ok, socket}
   end
 
+  def handle_in("game:pause", _payload, socket) do
+    Pong.GameServer.pause(String.to_atom(socket.assigns[:game_id]))
+    {:reply, :ok, socket}
+  end
+
   def terminate(reason, socket) do
-    Logger.debug "> leave #{inspect reason}"
+    # Logger.debug "> leave #{inspect reason}"
     Pong.GameServer.leave_game(socket.assigns[:game_id], socket.assigns[:user_id])
     :ok
   end

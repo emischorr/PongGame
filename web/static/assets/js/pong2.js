@@ -55,7 +55,7 @@ canvas.height = H;
 
 document.updateState = function(state) {
 	// update paddles
-	for(var i = 1; i < paddles.length; i++) {
+	for(var i = 1; i <= Object.keys(state.paddles).length; i++) {
 		p = paddles[i];
 		// console.log("paddle "+i+": "+state.paddles["p"+i].x)
 		p.x = state.paddles["p"+i].x - p.w/2;
