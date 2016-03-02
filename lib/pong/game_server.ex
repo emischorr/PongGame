@@ -168,10 +168,10 @@ defmodule Pong.GameServer do
 
   defp ball_collides?(%{paddles: paddles, ball: ball} = state) do
     case ball do
-      %{x: 0, y: _} -> {:collision, :left}
-      %{x: _, y: 0} -> {:collision, :top}
-      %{x: @board_width, y: _} -> {:collision, :right}
-      %{x: _, y: @board_height} -> {:collision, :bottom}
+      %{x: x, y: _} when x <= 0 -> {:collision, :left}
+      %{x: _, y: y} when y <= 0 -> {:collision, :top}
+      %{x: x, y: _} when x >= @board_width -> {:collision, :right}
+      %{x: _, y: y} when y >= @board_height -> {:collision, :bottom}
       _ -> {:no_collision}
     end
   end
