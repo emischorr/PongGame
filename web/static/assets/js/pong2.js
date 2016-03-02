@@ -57,7 +57,7 @@ document.updateState = function(state) {
 	// update paddles
 	for(var i = 1; i < paddles.length; i++) {
 		p = paddles[i];
-		console.log("paddle "+i+": "+state.paddles["p"+i].x)
+		// console.log("paddle "+i+": "+state.paddles["p"+i].x)
 		p.x = state.paddles["p"+i].x - p.w/2;
 	}
 
@@ -95,8 +95,8 @@ ball = {
 	y: 50,
 	r: 5,
 	c: "white",
-	vx: 1,//4,
-	vy: 1,//8,
+	vx: 2,//4,
+	vy: 2,//8,
 
 	// Function for drawing ball on canvas
 	draw: function() {
@@ -170,7 +170,7 @@ function draw() {
 	}
 
 	ball.draw();
-	update();
+	// update();
 }
 
 // Function to increase speed after every 5 points
@@ -197,16 +197,16 @@ function update() {
 	updateScore();
 
 	// Move the paddles on mouse move
-	// if(mouse.x && mouse.y) {
-	// 	for(var i = 1; i < paddles.length; i++) {
-	// 		p = paddles[i];
-	// 		p.x = mouse.x - p.w/2;
-	// 	}
-	// }
+	if(mouse.x && mouse.y) {
+		for(var i = 1; i < paddles.length; i++) {
+			p = paddles[i];
+			p.x = mouse.x - p.w/2;
+		}
+	}
 
 	// Move the ball
-	// ball.x += ball.vx;
-	// ball.y += ball.vy;
+	ball.x += ball.vx;
+	ball.y += ball.vy;
 
 	// Collision with paddles
 	p1 = paddles[1];
@@ -375,7 +375,7 @@ function animloop() {
 // Function to execute at startup
 function startScreen() {
 	draw();
-	startBtn.draw();
+	// startBtn.draw();
 }
 
 // On button click (Restart and start)

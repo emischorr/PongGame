@@ -40,8 +40,9 @@ defmodule Pong.GameServer do
   ### GenServer callbacks
   def init(_options) do
     state = %{
+      players: %{},
       paddles: %{p1: %{x: 350, y: @board_height}, p2: %{x: 350, y: 0}},
-      ball: %{x: 0, y: 0, vx: 1, vy: 1},
+      ball: %{x: 50, y: 50, vx: 2, vy: 2},
       game: %{running: false}
     }
     schedule_next_update
@@ -85,19 +86,42 @@ defmodule Pong.GameServer do
   end
 
   ### internal logic
-  defp update(state) do
-    state
-    |> move_ball
+  defp join(state, user) do
+    case player_count(state) do
+      0 -> put_in state[:players][:p1], user
+      1 -> put_in state[:players][:p2], user
+      _ -> state
+    end
   end
 
-  defp join(state, user) do
-    #TODO: join user
-    state
+  defp leave(state, user) do
+    #TODO: remove correct user/player
+    case player_count(state) do
+      2 -> Map.delete state[:players], :p2
+      1 -> Map.delete state[:players], :p1
+      _ -> state
+    end
+
+  end
+
+  defp player_count(state) do
+    Enum.count state[:players]
   end
 
   defp start(state) do
-    #TODO: check if enough players
-    put_in state[:game][:running], true
+    if player_count(state) > 0 do
+      put_in state[:game][:running], true
+    else
+      state
+    end
+  end
+
+  # game loop
+  defp update(state) do
+    state
+    |> move_ball
+    |> calculate_direction
+    |> broadcast
   end
 
   defp move_ball(state) do
@@ -108,14 +132,29 @@ defmodule Pong.GameServer do
     end
   end
 
+  def calculate_direction(state) do
+    case ball_collides?(state) do
+      {:collision, :top} -> update_in state[:ball], &(%{x: &1.x, y: &1.y, vx: &1.vx, vy: &1.vy * -1})
+      {:collision, :bottom} -> update_in state[:ball], &(%{x: &1.x, y: &1.y, vx: &1.vx, vy: &1.vy * -1})
+      {:collision, :right} -> update_in state[:ball], &(%{x: &1.x, y: &1.y, vx: &1.vx * -1, vy: &1.vy})
+      {:collision, :left} -> update_in state[:ball], &(%{x: &1.x, y: &1.y, vx: &1.vx * -1, vy: &1.vy})
+      _ -> state
+    end
+  end
+
   defp ball_collides?(%{paddles: paddles, ball: ball} = state) do
     case ball do
       %{x: 0, y: _} -> {:collision, :left}
       %{x: _, y: 0} -> {:collision, :top}
       %{x: @board_width, y: _} -> {:collision, :right}
-      %{x: _, y: @board_height} -> {:collision, :top}
+      %{x: _, y: @board_height} -> {:collision, :bottom}
       _ -> {:no_collision}
     end
+  end
+
+  defp broadcast(state) do
+    Pong.Endpoint.broadcast "games:public", "state:update", state
+    state
   end
 
   defp schedule_next_update do
