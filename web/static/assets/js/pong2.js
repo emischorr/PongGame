@@ -24,7 +24,7 @@ window.cancelRequestAnimFrame = ( function() {
 var canvas = document.getElementById("canvas"),
 		ctx = canvas.getContext("2d"), // Create canvas context
 		W = 700,//window.innerWidth, // Window's width
-		H = 500,//window.innerHeight, // Window's height
+		H = 700,//window.innerHeight, // Window's height
 		particles = [], // Array containing particles
 		ball = {}, // Ball object
 		paddles = [2], // Array containing two paddles
@@ -55,11 +55,19 @@ canvas.height = H;
 
 document.updateState = function(state) {
 	// update paddles
-	for(var i = 1; i <= Object.keys(state.paddles).length; i++) {
+	// Object.keys(state.paddles).length
+	for(var i = 1; i < paddles.length; i++) {
 		p = paddles[i];
-		// console.log("paddle "+i+": "+state.paddles["p"+i].x)
-		p.w = state.paddles["p"+i].len;
-		p.x = state.paddles["p"+i].x - p.w/2;
+		if (state.paddles["p"+i] != null) {
+			// console.log("paddle "+i+": "+state.paddles["p"+i].x)
+			p.visible = true;
+			p.pos = state.paddles["p"+i].pos;
+			p.w = state.paddles["p"+i].len;
+			p.x = state.paddles["p"+i].x - p.w/2;
+			p.y = state.paddles["p"+i].y - p.h/2;
+		} else {
+			p.visible = false;
+		}
 	}
 
 	// update ball
@@ -80,15 +88,20 @@ function Paddle(pos) {
 	this.h = 5;
 	this.w = 150;
 
+	this.visible = false;
+	this.pos = pos;
+
 	// Paddle's position
 	this.x = W/2 - this.w/2;
 	this.y = (pos == "top") ? 0 : H - this.h;
 
 }
 
-// Push two new paddles into the paddles[] array
+// Push new paddles into the paddles[] array
 paddles.push(new Paddle("bottom"));
 paddles.push(new Paddle("top"));
+paddles.push(new Paddle("left"));
+paddles.push(new Paddle("right"));
 
 // Ball object
 ball = {
@@ -166,8 +179,14 @@ function draw() {
 	for(var i = 0; i < paddles.length; i++) {
 		p = paddles[i];
 
-		ctx.fillStyle = "white";
-		ctx.fillRect(p.x, p.y, p.w, p.h);
+		if (p.visible) {
+			ctx.fillStyle = "white";
+			if (p.pos == "top" || p.pos == "bottom") {
+				ctx.fillRect(p.x, p.y, p.w, p.h);
+			} else {
+				ctx.fillRect(p.x, p.y, p.h, p.w);
+			}
+		}
 	}
 
 	ball.draw();
