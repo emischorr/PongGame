@@ -45,19 +45,19 @@ class App {
 
     $(document).off("keydown").on("keydown", e => {
       // alert("key "+e.keyCode)
-      if (e.keyCode == 19) {
+      if (e.keyCode == 19 || e.keyCode == 80) {
         chan.push("game:pause", {})
       }
-      if (e.keyCode == 65) {
+      if (e.keyCode == 65 || e.keyCode == 37) {
         chan.push("move:left", {})
       }
-      if (e.keyCode == 68) {
+      if (e.keyCode == 68 || e.keyCode == 39) {
         chan.push("move:right", {})
       }
-      if (e.keyCode == 87) {
+      if (e.keyCode == 87 || e.keyCode == 38) {
         chan.push("move:up", {})
       }
-      if (e.keyCode == 83) {
+      if (e.keyCode == 83 || e.keyCode == 40) {
         chan.push("move:down", {})
       }
     })

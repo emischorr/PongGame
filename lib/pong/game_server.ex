@@ -3,13 +3,16 @@ defmodule Pong.GameServer do
   require Logger
 
   @update_time 33 # ~1/30 sec
+  @collision_shortcut_boundary 50 # in px
 
   @paddle_speed 20
+  @paddle_len 100
+  @paddle_width 5
   @board_height 500
   @board_width 700
   @ball_radius 5
 
-  @start_ball %{x: 50, y: 50, vx: 2, vy: 2}
+  @start_ball %{x: 50, y: 50, vx: 2.1, vy: 2}
 
   ### public api
   def start_link(game) do
@@ -128,6 +131,7 @@ defmodule Pong.GameServer do
   end
 
   defp stop(state) do
+    Logger.debug "Game stopped"
     put_in state[:game][:running], false
   end
 
@@ -150,11 +154,7 @@ defmodule Pong.GameServer do
   end
 
   defp move_ball(state) do
-    if state[:game][:running] do
-      update_in state[:ball], &(%{x: &1.x + &1.vx, y: &1.y + &1.vy, vx: &1.vx, vy: &1.vy})
-    else
-      state
-    end
+    update_in state[:ball], &(%{x: &1.x + &1.vx, y: &1.y + &1.vy, vx: &1.vx, vy: &1.vy})
   end
 
   defp check_points(state) do
@@ -173,6 +173,8 @@ defmodule Pong.GameServer do
 
   defp ball_collides_wall?(%{paddles: paddles, ball: ball} = state) do
     collision = case {ball, Map.values(paddles)} do
+      {%{x: x, y: y}, _} when x >= @collision_shortcut_boundary and x <= (@board_width - @collision_shortcut_boundary)
+        and y >= @collision_shortcut_boundary and y <= (@board_height - @collision_shortcut_boundary) -> {:in_boundary}
       # {%{x: x, y: y}, [%{x: px, y: py}]} when y in @board_height-10..@board_height and x in px-50..px+50 -> Logger.debug "hit"; {:collision, :bottom}
       {%{x: x, y: _}, _} when x <= 0 + @ball_radius -> {:collision, :left, :no}
       {%{x: _, y: y}, _} when y <= 0 + @ball_radius -> {:collision, :top, :no}
@@ -184,13 +186,18 @@ defmodule Pong.GameServer do
 
   defp ball_collides?(%{paddles: paddles} = state) do
     case ball_collides_wall?(state) do
+      {:in_boundary} -> {:no_collision}
       {:collision, side, _} -> {:collision, side, :no}
       {:no_wall, x, y} ->
         collisions = for {k, v} <- paddles do
           case {x, y, v.x, v.y, v.len} do
-            {x, y, px, py, plen} when py == @board_height and y in @board_height-10..@board_height and x in round(px)-round(plen/2)..round(px)+round(plen/2) ->
+            {x, y, px, py, plen} when py == @board_height
+            and y >= @board_height-@ball_radius-@paddle_width and y <= @board_height-@ball_radius
+            and x >= px-plen/2 and x <= px+plen/2 ->
               Logger.debug "hit #{k}"; {:collision, :bottom, k}
-            {x, y, px, py, plen} when py == 0 and y in 0..10 and x in round(px)-round(plen/2)..round(px)+round(plen/2) ->
+            {x, y, px, py, plen} when py == 0
+            and y >= 0+@ball_radius and y <= @ball_radius+@paddle_width
+            and x >= px-plen/2 and x <= px+plen/2 ->
               Logger.debug "hit #{k}"; {:collision, :top, k}
             _ -> {:no_collision}
           end
@@ -200,9 +207,7 @@ defmodule Pong.GameServer do
   end
 
   defp broadcast(state) do
-    if state[:game][:running] do
-      Pong.Endpoint.broadcast "games:public", "state:update", state
-    end
+    Pong.Endpoint.broadcast "games:public", "state:update", state
     state
   end
 
@@ -222,10 +227,10 @@ defmodule Pong.GameServer do
 
   defp create_paddle(player) when player in [:p1, :p2, :p3, :p4] do
     case player do
-      :p1 -> %{x: @board_width/2, y: @board_height, pos: :bottom, len: 100}
-      :p2 -> %{x: @board_width/2, y: 0, pos: :top, len: 100}
-      :p3 -> %{x: 0, y: @board_height/2, pos: :left, len: 100}
-      :p4 -> %{x: @board_width, y: @board_height/2, pos: :right, len: 100}
+      :p1 -> %{x: @board_width/2, y: @board_height, pos: :bottom, len: @paddle_len}
+      :p2 -> %{x: @board_width/2, y: 0, pos: :top, len: @paddle_len}
+      :p3 -> %{x: 0, y: @board_height/2, pos: :left, len: @paddle_len}
+      :p4 -> %{x: @board_width, y: @board_height/2, pos: :right, len: @paddle_len}
     end
   end
 
