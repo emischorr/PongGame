@@ -5,6 +5,8 @@ defmodule Pong.GameServer do
   @update_time 33 # ~1/30 sec
   @collision_shortcut_boundary 50 # in px
 
+  @min_player_count 1
+
   @paddle_speed 20
   @paddle_len 100
   @paddle_width 5
@@ -16,18 +18,18 @@ defmodule Pong.GameServer do
 
   ### public api
   def start_link(game) do
-    GenServer.start_link(__MODULE__, [], name: game)
+    GenServer.start_link(__MODULE__, [name: Atom.to_string(game)], name: game)
   end
 
-  def join_game(name, user) do
+  def join_game(name, user, mode) do
     p_name = String.to_atom(name)
     case Process.whereis(p_name) do
       nil ->
         {:ok, pid} = start_link(p_name)
         Logger.debug "Started new game server process: #{p_name}"
-        GenServer.call(p_name, {:join, user})
+        GenServer.call(p_name, {:join, user, mode})
       _pid ->
-        GenServer.call(p_name, {:join, user})
+        GenServer.call(p_name, {:join, user, mode})
     end
   end
 
@@ -49,7 +51,7 @@ defmodule Pong.GameServer do
   end
 
   ### GenServer callbacks
-  def init(_options) do
+  def init(options) do
     <<a::size(32), b::size(32), c::size(32)>> = :crypto.rand_bytes(12)
     :random.seed({a, b, c})
 
@@ -57,15 +59,15 @@ defmodule Pong.GameServer do
       players: %{},
       paddles: %{},
       balls: %{b1: @start_ball},
-      game: %{running: false}
+      game: %{running: false, name: options[:name]}
     }
     schedule_next_update
     {:ok, state}
   end
 
-  def handle_call({:join, user}, _from, state) do
+  def handle_call({:join, user, mode}, _from, state) do
     new_state = state
-    |> join(user)
+    |> join(user, mode)
     |> start
     {:reply, new_state, new_state}
   end
@@ -107,14 +109,20 @@ defmodule Pong.GameServer do
   end
 
   ### internal logic
-  defp join(state, user) do
-    Logger.debug "Joining user #{user}... [current players: #{player_count(state)}]"
-    state |> add_player(user)
+  defp join(state, user, mode) do
+    case mode do
+      :player ->
+        Logger.debug "Joining user #{user} as player... [current players: #{player_count(state)}]"
+        state |> add_player(user)
+      _ ->
+        Logger.debug "Joining user #{user} as spectator... [current players: #{player_count(state)}]"
+        state
+    end
   end
 
   defp leave(state, user) do
     Logger.debug "User leaving... [current players: #{player_count(state)}]"
-    remove_player(state, user)
+    if player_count(state) > 0, do: remove_player(state, user)
     case player_count(state) do
       0 -> stop(state)
       _ -> state
@@ -134,7 +142,7 @@ defmodule Pong.GameServer do
   end
 
   defp restart(state) do
-    if player_count(state) > 0 do
+    if player_count(state) >= @min_player_count do
       Logger.debug "Starting game... [current players: #{player_count(state)}]"
       rand_fn = &(&1*:random.uniform+1)
       ball = @start_ball |> Map.update!(:vx, rand_fn) |> Map.update!(:vy, rand_fn)
@@ -250,7 +258,7 @@ defmodule Pong.GameServer do
   end
 
   defp broadcast(state) do
-    Pong.Endpoint.broadcast "games:public", "state:update", state
+    Pong.Endpoint.broadcast "games:"<>state[:game][:name], "state:update", state
     state
   end
 
@@ -272,7 +280,10 @@ defmodule Pong.GameServer do
   end
 
   defp player_pos(%{players: players} = state, user_id) do
-    elem( Enum.find(players, fn p -> elem(p,1) == user_id end), 0 )
+    case Enum.find(players, fn p -> elem(p,1) == user_id end) do
+      nil -> :spectator
+      player -> elem( player, 0 )
+    end
   end
 
   defp add_player(%{players: players} = state, user) do

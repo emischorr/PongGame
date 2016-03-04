@@ -8,11 +8,10 @@ defmodule Pong.GameController do
     render(conn, "index.html", games: games)
   end
 
-  def show(conn, %{"id" => id}) do
+  def show(conn, %{"id" => id} = params) do
     case game = Repo.get(Game, id) do
       nil -> redirect(conn, to: game_path(conn, :index))
-      _ ->
-        render conn, "show.html", game: game
+      _ -> render conn, "show.html", game: game, mode: Dict.get(params, "mode", "spectator")
     end
   end
 

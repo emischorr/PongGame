@@ -17,13 +17,13 @@ defmodule Pong.GameChannel do
     {:ok, socket}
   end
 
-  def join("games:" <> game_id, _payload, socket) do
-    Pong.GameServer.join_game(game_id, socket.assigns[:user_id])
+  def join("games:" <> game_id, payload, socket) do
+    Pong.GameServer.join_game(game_id, socket.assigns[:user_id], String.to_atom(payload["mode"]))
     {:ok, assign(socket, :game_id, game_id)}
   end
 
   def handle_in("move:" <> direction, _payload, socket) do
-    Logger.debug "[game: #{socket.assigns[:game_id]}] user #{socket.assigns[:user_id]} moved #{direction}"
+    # Logger.debug "[game: #{socket.assigns[:game_id]}] user #{socket.assigns[:user_id]} moved #{direction}"
     state = Pong.GameServer.move(String.to_atom(socket.assigns[:game_id]), socket.assigns[:user_id], String.to_atom(direction))
     # broadcast! socket, "state:update", state
     {:reply, :ok, socket}

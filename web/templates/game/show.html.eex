@@ -2,3 +2,8 @@
 <canvas id="canvas"></canvas>
 
 <script src="<%= static_path(@conn, "/js/pong2.js") %>"></script>
+<script>
+  $(function(){
+    document.initApp("<%= "game#{@game.id}" %>", "<%= @mode %>")
+  });
+</script>

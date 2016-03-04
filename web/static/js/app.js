@@ -22,8 +22,7 @@ import "phoenix_html"
 
 import {Socket, LongPoller} from "phoenix"
 
-class App {
-  static init() {
+document.initApp = function(game, mode) {
     let socket = new Socket("/socket", {
       logger: ((kind, msg, data) => { console.log(`${kind}: ${msg}`, data) })
     })
@@ -34,7 +33,7 @@ class App {
     socket.onError( e => console.log("ERROR", e) )
     socket.onClose( e => console.log("CLOSE", e) )
 
-    var chan = socket.channel("games:public", {})
+    var chan = socket.channel("games:"+game, {mode: mode})
 
     chan.join().receive("ignore", () => console.log("Auth error"))
       .receive("error", resp => { console.log("Unable to join", resp) })
@@ -67,10 +66,4 @@ class App {
       document.updateState(state)
     })
 
-  } // end init()
-
-} // end App
-
-$( () => App.init() )
-
-export default App
+} // end init()
