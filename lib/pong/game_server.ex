@@ -3,7 +3,7 @@ defmodule Pong.GameServer do
   require Logger
 
   @update_time 33 # ~1/30 sec
-  @collision_shortcut_boundary 100 # in px
+  @collision_shortcut_boundary 50 # in px
 
   @paddle_speed 20
   @paddle_len 100
@@ -12,7 +12,7 @@ defmodule Pong.GameServer do
   @board_width 700
   @ball_radius 5
 
-  @start_ball %{x: 350, y: 350, vx: 2.5, vy: 2}
+  @start_ball %{x: 350, y: 350, vx: 4, vy: 4.5}
 
   ### public api
   def start_link(game) do
@@ -36,8 +36,8 @@ defmodule Pong.GameServer do
     GenServer.call(p_name, {:leave, user})
   end
 
-  def move(game, player, direction) do
-    GenServer.call(game, {:move, String.to_atom(player), direction})
+  def move(game, user_id, direction) do
+    GenServer.call(game, {:move, user_id, direction})
   end
 
   def pause(game) do
@@ -51,7 +51,7 @@ defmodule Pong.GameServer do
   ### GenServer callbacks
   def init(_options) do
     <<a::size(32), b::size(32), c::size(32)>> = :crypto.rand_bytes(12)
-    :rand.seed({a, b, c})
+    :random.seed({a, b, c})
 
     state = %{
       players: %{},
@@ -75,7 +75,8 @@ defmodule Pong.GameServer do
     {:reply, new_state, new_state}
   end
 
-  def handle_call({:move, player, direction}, _from, state) do
+  def handle_call({:move, user_id, direction}, _from, state) do
+    player = player_pos(state, user_id)
     new_state = case direction do
       :right when player in [:p1, :p2] -> update_in state[:paddles][player].x, &(&1 + @paddle_speed)
       :left when player in [:p1, :p2] -> update_in state[:paddles][player].x, &(&1 - @paddle_speed)
@@ -135,7 +136,8 @@ defmodule Pong.GameServer do
   defp restart(state) do
     if player_count(state) > 0 do
       Logger.debug "Starting game... [current players: #{player_count(state)}]"
-      ball = @start_ball |> Map.put(:vx, :rand.uniform(4)-1.5) |> Map.put(:vy, :rand.uniform(4)-1.5)
+      rand_fn = &(&1*:random.uniform+1)
+      ball = @start_ball |> Map.update!(:vx, rand_fn) |> Map.update!(:vy, rand_fn)
       state = put_in(state[:ball], ball)
       put_in(state[:game][:running], true)
     else
@@ -269,8 +271,13 @@ defmodule Pong.GameServer do
     end
   end
 
+  defp player_pos(%{players: players} = state, user_id) do
+    elem( Enum.find(players, fn p -> elem(p,1) == user_id end), 0 )
+  end
+
   defp add_player(%{players: players} = state, user) do
-    player = Enum.find [:p1, :p2, :p3, :p4], fn player_pos -> !Map.has_key? players, player_pos end
+    # order in wich player seats are assigned
+    player = Enum.find [:p3, :p2, :p1, :p4], fn player_pos -> !Map.has_key? players, player_pos end
     case player do
       nil -> state
       p ->
@@ -280,17 +287,17 @@ defmodule Pong.GameServer do
   end
 
   defp remove_player(%{players: players} = state, user_id) do
-    player_pos = elem( Enum.find(players, fn p -> elem(p,1) == user_id end), 0 )
-    state = update_in(state[:players], &Map.delete(&1, player_pos))
-    update_in(state[:paddles], &Map.delete(&1, player_pos))
+    player = player_pos(state, user_id)
+    state = update_in( state[:players], &Map.delete(&1, player) )
+    update_in( state[:paddles], &Map.delete(&1, player) )
   end
 
   defp create_paddle(player) when player in [:p1, :p2, :p3, :p4] do
     case player do
       :p1 -> %{x: @board_width/2, y: @board_height, pos: :bottom, len: @paddle_len}
       :p2 -> %{x: @board_width/2, y: 0, pos: :top, len: @paddle_len}
-      :p3 -> %{x: 50, y: @board_height/2-@paddle_len/2, pos: :left, len: @paddle_len}
-      :p4 -> %{x: @board_width+45, y: @board_height/2-@paddle_len/2, pos: :right, len: @paddle_len}
+      :p3 -> %{x: 0, y: @board_height/2, pos: :left, len: @paddle_len}
+      :p4 -> %{x: @board_width, y: @board_height/2, pos: :right, len: @paddle_len}
     end
   end
 

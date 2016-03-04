@@ -24,7 +24,7 @@ defmodule Pong.GameChannel do
 
   def handle_in("move:" <> direction, _payload, socket) do
     Logger.debug "[game: #{socket.assigns[:game_id]}] user #{socket.assigns[:user_id]} moved #{direction}"
-    state = Pong.GameServer.move(String.to_atom(socket.assigns[:game_id]), "p" <> Integer.to_string(socket.assigns[:user_id]), String.to_atom(direction))
+    state = Pong.GameServer.move(String.to_atom(socket.assigns[:game_id]), socket.assigns[:user_id], String.to_atom(direction))
     # broadcast! socket, "state:update", state
     {:reply, :ok, socket}
   end

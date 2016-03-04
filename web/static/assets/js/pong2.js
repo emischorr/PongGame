@@ -63,8 +63,13 @@ document.updateState = function(state) {
 			p.visible = true;
 			p.pos = state.paddles["p"+i].pos;
 			p.w = state.paddles["p"+i].len;
-			p.x = state.paddles["p"+i].x - p.w/2;
-			p.y = state.paddles["p"+i].y - p.h/2;
+			if (p.pos == "top" || p.pos == "bottom") {
+				p.x = state.paddles["p"+i].x;
+				p.y = state.paddles["p"+i].y;
+			} else {
+				p.x = state.paddles["p"+i].x;
+				p.y = state.paddles["p"+i].y;
+			}
 		} else {
 			p.visible = false;
 		}
@@ -105,8 +110,8 @@ paddles.push(new Paddle("right"));
 
 // Ball object
 ball = {
-	x: 50,
-	y: 50,
+	x: 350,
+	y: 350,
 	r: 5,
 	c: "white",
 	vx: 2,//4,
@@ -182,9 +187,9 @@ function draw() {
 		if (p.visible) {
 			ctx.fillStyle = "white";
 			if (p.pos == "top" || p.pos == "bottom") {
-				ctx.fillRect(p.x, p.y, p.w, p.h);
+				ctx.fillRect(p.x - p.w/2, p.y, p.w, p.h);
 			} else {
-				ctx.fillRect(p.x, p.y, p.h, p.w);
+				ctx.fillRect(p.x, p.y - p.w/2, p.h, p.w);
 			}
 		}
 	}
