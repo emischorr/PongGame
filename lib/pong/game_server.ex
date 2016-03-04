@@ -12,7 +12,7 @@ defmodule Pong.GameServer do
   @board_width 700
   @ball_radius 5
 
-  @start_ball %{x: 350, y: 350, vx: 4, vy: 4.5}
+  @start_ball %{x: 350, y: 350, vx: 5, vy: 6}
 
   ### public api
   def start_link(game) do
@@ -56,7 +56,7 @@ defmodule Pong.GameServer do
     state = %{
       players: %{},
       paddles: %{},
-      ball: @start_ball,
+      balls: %{b1: @start_ball},
       game: %{running: false}
     }
     schedule_next_update
@@ -138,7 +138,7 @@ defmodule Pong.GameServer do
       Logger.debug "Starting game... [current players: #{player_count(state)}]"
       rand_fn = &(&1*:random.uniform+1)
       ball = @start_ball |> Map.update!(:vx, rand_fn) |> Map.update!(:vy, rand_fn)
-      state = put_in(state[:ball], ball)
+      state = put_in(state[:balls], %{b1: ball})
       put_in(state[:game][:running], true)
     else
       state
@@ -170,7 +170,7 @@ defmodule Pong.GameServer do
   end
 
   defp move_ball(state) do
-    update_in state[:ball], &(%{x: &1.x + &1.vx, y: &1.y + &1.vy, vx: &1.vx, vy: &1.vy})
+    update_in state[:balls][:b1], &(%{x: &1.x + &1.vx, y: &1.y + &1.vy, vx: &1.vx, vy: &1.vy})
   end
 
   defp check_collision(state) do
@@ -193,16 +193,16 @@ defmodule Pong.GameServer do
 
   defp calculate_direction({state, collision}) do
     case collision do
-      {:collision, :top, _} -> update_in state[:ball], &(%{x: &1.x, y: &1.y, vx: &1.vx, vy: &1.vy * -1})
-      {:collision, :bottom, _} -> update_in state[:ball], &(%{x: &1.x, y: &1.y, vx: &1.vx, vy: &1.vy * -1})
-      {:collision, :right, _} -> update_in state[:ball], &(%{x: &1.x, y: &1.y, vx: &1.vx * -1, vy: &1.vy})
-      {:collision, :left, _} -> update_in state[:ball], &(%{x: &1.x, y: &1.y, vx: &1.vx * -1, vy: &1.vy})
+      {:collision, :top, _} -> update_in state[:balls][:b1], &(%{x: &1.x, y: &1.y, vx: &1.vx, vy: &1.vy * -1})
+      {:collision, :bottom, _} -> update_in state[:balls][:b1], &(%{x: &1.x, y: &1.y, vx: &1.vx, vy: &1.vy * -1})
+      {:collision, :right, _} -> update_in state[:balls][:b1], &(%{x: &1.x, y: &1.y, vx: &1.vx * -1, vy: &1.vy})
+      {:collision, :left, _} -> update_in state[:balls][:b1], &(%{x: &1.x, y: &1.y, vx: &1.vx * -1, vy: &1.vy})
       _ -> state
     end
   end
 
-  defp ball_collides_wall?(%{paddles: paddles, ball: ball} = state) do
-    collision = case {ball, Map.values(paddles)} do
+  defp ball_collides_wall?(%{paddles: paddles, balls: balls} = state) do
+    collision = case {balls[:b1], Map.values(paddles)} do
       {%{x: x, y: y}, _} when x >= @collision_shortcut_boundary and x <= (@board_width - @collision_shortcut_boundary)
         and y >= @collision_shortcut_boundary and y <= (@board_height - @collision_shortcut_boundary) -> {:in_boundary} # short circuit evaluation
       # {%{x: x, y: y}, [%{x: px, y: py}]} when y in @board_height-10..@board_height and x in px-50..px+50 -> Logger.debug "hit"; {:collision, :bottom}

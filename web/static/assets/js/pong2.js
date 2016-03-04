@@ -76,8 +76,8 @@ document.updateState = function(state) {
 	}
 
 	// update ball
-	ball.x = state.ball.x;
-	ball.y = state.ball.y;
+	ball.x = state.balls.b1.x;
+	ball.y = state.balls.b1.y;
 }
 
 
@@ -114,8 +114,8 @@ ball = {
 	y: 350,
 	r: 5,
 	c: "white",
-	vx: 2,//4,
-	vy: 2,//8,
+	vx: 4,
+	vy: 8,
 
 	// Function for drawing ball on canvas
 	draw: function() {
