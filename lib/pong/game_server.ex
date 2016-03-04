@@ -3,7 +3,7 @@ defmodule Pong.GameServer do
   require Logger
 
   @update_time 33 # ~1/30 sec
-  @collision_shortcut_boundary 50 # in px
+  @collision_shortcut_boundary 100 # in px
 
   @paddle_speed 20
   @paddle_len 100
@@ -12,7 +12,7 @@ defmodule Pong.GameServer do
   @board_width 700
   @ball_radius 5
 
-  @start_ball %{x: 50, y: 50, vx: 2.1, vy: 2}
+  @start_ball %{x: 350, y: 350, vx: 2.5, vy: 2}
 
   ### public api
   def start_link(game) do
@@ -50,6 +50,9 @@ defmodule Pong.GameServer do
 
   ### GenServer callbacks
   def init(_options) do
+    <<a::size(32), b::size(32), c::size(32)>> = :crypto.rand_bytes(12)
+    :rand.seed({a, b, c})
+
     state = %{
       players: %{},
       paddles: %{},
@@ -73,12 +76,11 @@ defmodule Pong.GameServer do
   end
 
   def handle_call({:move, player, direction}, _from, state) do
-    #TODO: allow only valid moves
     new_state = case direction do
-      :right -> update_in state[:paddles][player].x, &(&1 + @paddle_speed)
-      :left -> update_in state[:paddles][player].x, &(&1 - @paddle_speed)
-      :up -> update_in state[:paddles][player].y, &(&1 - @paddle_speed)
-      :down -> update_in state[:paddles][player].y, &(&1 + @paddle_speed)
+      :right when player in [:p1, :p2] -> update_in state[:paddles][player].x, &(&1 + @paddle_speed)
+      :left when player in [:p1, :p2] -> update_in state[:paddles][player].x, &(&1 - @paddle_speed)
+      :up when player in [:p3, :p4] -> update_in state[:paddles][player].y, &(&1 - @paddle_speed)
+      :down when player in [:p3, :p4] -> update_in state[:paddles][player].y, &(&1 + @paddle_speed)
       _ -> state
     end
     {:reply, new_state, new_state}
@@ -123,9 +125,18 @@ defmodule Pong.GameServer do
   end
 
   defp start(state) do
-    if !state[:game][:running] && player_count(state) > 0 do
+    if !state[:game][:running] do
+      restart(state)
+    else
+      state
+    end
+  end
+
+  defp restart(state) do
+    if player_count(state) > 0 do
       Logger.debug "Starting game... [current players: #{player_count(state)}]"
-      state = put_in(state[:ball], @start_ball)
+      ball = @start_ball |> Map.put(:vx, :rand.uniform(4)-1.5) |> Map.put(:vy, :rand.uniform(4)-1.5)
+      state = put_in(state[:ball], ball)
       put_in(state[:game][:running], true)
     else
       state
@@ -166,7 +177,16 @@ defmodule Pong.GameServer do
 
   defp check_points({state, collision}) do
     #TOOD: check for points/lives/goals
-    { state, collision }
+    case collision do
+      {:collision, side, :no} ->
+        if !side_empty(state, side) do
+          Logger.debug Atom.to_string(side)<>" side lost"
+          { restart(state), {} }
+        else
+          { state, collision }
+        end
+      _ -> { state, collision }
+    end
   end
 
   defp calculate_direction({state, collision}) do
@@ -234,6 +254,19 @@ defmodule Pong.GameServer do
 
   defp schedule_next_update do
     Process.send_after(self(), :update, @update_time)
+  end
+
+  defp side_empty(%{players: players} = state, side) do
+    player = case side do
+      :bottom -> :p1
+      :top -> :p2
+      :left -> :p3
+      :right -> :p4
+    end
+    case Enum.find(players, fn p -> elem(p,0) == player end) do
+      nil -> true
+      _ -> false
+    end
   end
 
   defp add_player(%{players: players} = state, user) do
