@@ -58,8 +58,8 @@ defmodule Pong.GameServer do
     state = %{
       players: %{},
       paddles: %{},
-      balls: %{b1: generate_random_ball},
-      game: %{running: false, name: options[:name]}
+      balls: [b1: generate_random_ball],
+      game: %{running: false, ms_elapsed: 0, name: options[:name]}
     }
     schedule_next_update
     {:ok, state}
@@ -149,8 +149,10 @@ defmodule Pong.GameServer do
   defp restart(state) do
     if player_count(state) >= @min_player_count do
       Logger.debug "Starting game... [current players: #{player_count(state)}]"
-      state = put_in(state[:balls], %{b1: generate_random_ball})
-      put_in(state[:game][:running], true)
+      state
+      |> put_in([:balls], [b1: generate_random_ball])
+      |> put_in([:game, :ms_elapsed], 0)
+      |> put_in([:game, :running], true)
     else
       state
     end
@@ -170,10 +172,12 @@ defmodule Pong.GameServer do
   defp update(state) do
     if state[:game][:running] do
       state
-      |> move_ball
+      |> update_time
+      |> move_balls
       |> check_collision
       |> check_points
       |> calculate_direction
+      |> add_ball
       |> broadcast
     else
       state
@@ -188,8 +192,30 @@ defmodule Pong.GameServer do
     |> IO.inspect
   end
 
-  defp move_ball(state) do
-    update_in state[:balls][:b1], &(%{x: &1.x + &1.vx, y: &1.y + &1.vy, vx: &1.vx, vy: &1.vy})
+  defp update_time(state) do
+    update_in(state[:game][:ms_elapsed], &(&1 + @update_time))
+  end
+
+  defp move_balls(state) do
+    update_in state[:balls], &(update_balls(&1))
+  end
+
+  defp update_balls(balls), do: update_balls([], balls)
+  defp update_balls(balls, []), do: balls
+  defp update_balls(balls, [ball | tail]) do
+    update_balls(balls ++ [update_ball(ball)], tail)
+  end
+
+  defp update_ball({id, ball}) do
+    {id, %{x: clamp(ball.x + ball.vx), y: clamp(ball.y + ball.vy), vx: ball.vx, vy: ball.vy}}
+  end
+
+  defp clamp(value) when is_number(value) do
+    if (value < @ball_radius) do
+      @ball_radius
+    else
+      value
+    end
   end
 
   defp check_collision(state) do
@@ -219,6 +245,15 @@ defmodule Pong.GameServer do
       {:collision, :right, _} -> update_in state[:balls][:b1], &(%{x: &1.x, y: &1.y, vx: &1.vx * -reflection_factor + speed_up, vy: &1.vy+speed_up})
       {:collision, :left, _} -> update_in state[:balls][:b1], &(%{x: &1.x, y: &1.y, vx: &1.vx * -reflection_factor + speed_up, vy: &1.vy+speed_up})
       _ -> state
+    end
+  end
+
+  defp add_ball(state) do
+    if (state[:game][:ms_elapsed] >= 5000 and state[:game][:ms_elapsed] < 5000 + @update_time) do
+      Logger.debug "add ball after #{state[:game][:ms_elapsed]}ms"
+      put_in(state[:balls][:b2], generate_random_ball)
+    else
+      state
     end
   end
 
@@ -271,7 +306,7 @@ defmodule Pong.GameServer do
   end
 
   defp broadcast(state) do
-    Pong.Endpoint.broadcast "games:"<>state[:game][:name], "state:update", state
+    Pong.Endpoint.broadcast "games:"<>state[:game][:name], "state:update", update_in(state[:balls], &(Enum.into(&1, %{})))
     state
   end
 

@@ -26,8 +26,8 @@ var canvas = document.getElementById("canvas"),
 		W = 700,//window.innerWidth, // Window's width
 		H = 700,//window.innerHeight, // Window's height
 		particles = [], // Array containing particles
-		ball = {}, // Ball object
-		paddles = [2], // Array containing two paddles
+    balls = [],
+		paddles = [4], // Array containing four paddles
 		mouse = {}, // Mouse object to store it's current position
 		points = 0, // Varialbe to store points
 		fps = 60, // Max FPS (frames per second)
@@ -75,9 +75,19 @@ document.updateState = function(state) {
 		}
 	}
 
+  // balls = []
+
 	// update ball
-	ball.x = state.balls.b1.x;
-	ball.y = state.balls.b1.y;
+  for(var i = 0; i < Object.keys(state.balls).length; i++) {
+    if (balls[i] == undefined) {
+      balls.push(new Ball(Object.keys(state.balls).length));
+    }
+    if (i == 1) {
+      console.log("state.balls.b"+(i+1), state.balls["b"+(i+1)]);
+    }
+  	balls[i].x = state.balls["b"+(i+1)].x;
+  	balls[i].y = state.balls["b"+(i+1)].y;
+  }
 }
 
 
@@ -108,23 +118,30 @@ paddles.push(new Paddle("top"));
 paddles.push(new Paddle("left"));
 paddles.push(new Paddle("right"));
 
-// Ball object
-ball = {
-	x: 350,
-	y: 350,
-	r: 5,
-	c: "white",
-	vx: 4,
-	vy: 8,
-
-	// Function for drawing ball on canvas
-	draw: function() {
-		ctx.beginPath();
-		ctx.fillStyle = this.c;
-		ctx.arc(this.x, this.y, this.r, 0, Math.PI*2, false);
-		ctx.fill();
-	}
+// Function for creating ball object
+function Ball(id) {
+  this.id = id;
+	this.x = 350;
+	this.y = 350;
+	this.r = 5;
+  if (id == 1) {
+  	this.c = "white";
+  } else {
+    this.c = "#dedede";
+  }
+	this.vx = 4;
+	this.vy = 8;
+}
+// Function for drawing ball on canvas
+Ball.prototype.draw = function() {
+	ctx.beginPath();
+	ctx.fillStyle = this.c;
+	ctx.arc(this.x, this.y, this.r, 0, Math.PI*2, false);
+	ctx.fill();
 };
+
+// push ne balls into the array
+balls.push(new Ball(1));
 
 
 // Start Button object
@@ -194,7 +211,10 @@ function draw() {
 		}
 	}
 
-	ball.draw();
+  for(var i = 0; i < balls.length; i++) {
+		ball = balls[i];
+    ball.draw();
+  }
 	// update();
 }
 
