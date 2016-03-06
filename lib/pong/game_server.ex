@@ -212,11 +212,12 @@ defmodule Pong.GameServer do
 
   defp calculate_direction({state, collision}) do
     reflection_factor = Enum.random(9..11)/10
+    speed_up = 0.4
     case collision do
-      {:collision, :top, _} -> update_in state[:balls][:b1], &(%{x: &1.x, y: &1.y, vx: &1.vx, vy: &1.vy * -reflection_factor})
-      {:collision, :bottom, _} -> update_in state[:balls][:b1], &(%{x: &1.x, y: &1.y, vx: &1.vx, vy: &1.vy * -reflection_factor})
-      {:collision, :right, _} -> update_in state[:balls][:b1], &(%{x: &1.x, y: &1.y, vx: &1.vx * -reflection_factor, vy: &1.vy})
-      {:collision, :left, _} -> update_in state[:balls][:b1], &(%{x: &1.x, y: &1.y, vx: &1.vx * -reflection_factor, vy: &1.vy})
+      {:collision, :top, _} -> update_in state[:balls][:b1], &(%{x: &1.x, y: &1.y, vx: &1.vx+speed_up, vy: &1.vy * -reflection_factor + speed_up})
+      {:collision, :bottom, _} -> update_in state[:balls][:b1], &(%{x: &1.x, y: &1.y, vx: &1.vx+speed_up, vy: &1.vy * -reflection_factor + speed_up})
+      {:collision, :right, _} -> update_in state[:balls][:b1], &(%{x: &1.x, y: &1.y, vx: &1.vx * -reflection_factor + speed_up, vy: &1.vy+speed_up})
+      {:collision, :left, _} -> update_in state[:balls][:b1], &(%{x: &1.x, y: &1.y, vx: &1.vx * -reflection_factor + speed_up, vy: &1.vy+speed_up})
       _ -> state
     end
   end
