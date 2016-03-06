@@ -35,6 +35,7 @@ defmodule Pong.Router do
     pipe_through :auth
 
     resources "games", GameController
+    get "/games/:id/control", GameController, :control
     get "/games/:id/:mode", GameController, :show
 
     put "/account", UserController, :update

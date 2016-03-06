@@ -1,0 +1,36 @@
+<h2><%= @game.name %></h2>
+
+<div class="controls">
+  <div class="control-button" data-control="left">A</div>
+  <div class="up-down-controls">
+    <div class="control-button" data-control="up">W</div>
+    <div class="control-button" data-control="down">S</div>
+  </div>
+  <div class="control-button" data-control="right">D</div>
+</div>
+
+<script>
+  $(function(){
+    document.initApp("<%= "game#{@game.id}" %>", "player")
+
+    document.updateState = function(state) {
+
+    };
+
+    $('.control-button').off('click').on('click', e => {
+      console.log(e);
+      if (e.toElement.dataset.control == "left") {
+        document.chan.push("move:left", {})
+      }
+      if (e.toElement.dataset.control == "up") {
+        document.chan.push("move:up", {})
+      }
+      if (e.toElement.dataset.control == "down") {
+        document.chan.push("move:down", {})
+      }
+      if (e.toElement.dataset.control == "right") {
+        document.chan.push("move:right", {})
+      }
+    });
+  });
+</script>

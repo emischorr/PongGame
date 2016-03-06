@@ -1,0 +1,31 @@
+.controls {
+  width: 400px;
+  margin: 40px auto;
+}
+
+.control-button {
+  width: 100px;
+  height: 100px;
+  border: 2px solid gray;
+  margin: 15px 5px;
+  display: inline-block;
+  font-size: 5em;
+  color: #181818;
+  text-align: center;
+
+  -webkit-user-select: none; /* Chrome/Safari */
+  -moz-user-select: none; /* Firefox */
+  -ms-user-select: none; /* IE10+ */
+
+  /* Rules below not implemented in browsers yet */
+  -o-user-select: none;
+  user-select: none;
+}
+
+.up-down-controls {
+  display: inline-block;
+}
+
+.up-down-controls .control-button {
+  display: block;
+}

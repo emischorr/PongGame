@@ -42,8 +42,8 @@ defmodule Pong.GameServer do
     GenServer.call(game, {:move, user_id, direction})
   end
 
-  def pause(game) do
-    GenServer.call(game, :pause)
+  def pause(game, user_id) do
+    GenServer.call(game, {:pause, user_id})
   end
 
   def current_state(game) do
@@ -89,8 +89,13 @@ defmodule Pong.GameServer do
     {:reply, new_state, new_state}
   end
 
-  def handle_call(:pause, _from, state) do
-    {:reply, %{}, toggle_pause(state)}
+  def handle_call({:pause, user_id}, _from, state) do
+    player = player_pos(state, user_id)
+    if player in [:p1, :p2, :p3, :p4] do
+      {:reply, %{}, toggle_pause(state)}
+    else
+      {:reply, %{}, state}
+    end
   end
 
   def handle_call(:current_state, _from, state) do

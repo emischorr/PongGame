@@ -24,7 +24,7 @@ import {Socket, LongPoller} from "phoenix"
 
 document.initApp = function(game, mode) {
     let socket = new Socket("/socket", {
-      logger: ((kind, msg, data) => { console.log(`${kind}: ${msg}`, data) })
+      // logger: ((kind, msg, data) => { console.log(`${kind}: ${msg}`, data) })
     })
 
     socket.connect({token: window.userToken})
@@ -34,6 +34,7 @@ document.initApp = function(game, mode) {
     socket.onClose( e => console.log("CLOSE", e) )
 
     var chan = socket.channel("games:"+game, {mode: mode})
+    document.chan = chan;
 
     chan.join().receive("ignore", () => console.log("Auth error"))
       .receive("error", resp => { console.log("Unable to join", resp) })

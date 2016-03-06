@@ -15,6 +15,13 @@ defmodule Pong.GameController do
     end
   end
 
+  def control(conn, %{"id" => id}) do
+    case game = Repo.get(Game, id) do
+      nil -> redirect(conn, to: game_path(conn, :index))
+      _ -> render conn, "control.html", game: game
+    end
+  end
+
   def new(conn, _) do
     changeset = Game.changeset(%Game{})
     render(conn, "new.html", changeset: changeset)
