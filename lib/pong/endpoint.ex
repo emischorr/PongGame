@@ -1,7 +1,8 @@
 defmodule Pong.Endpoint do
   use Phoenix.Endpoint, otp_app: :pong
 
-  socket "/socket", Pong.UserSocket
+  socket "/user_socket", Pong.UserSocket
+  socket "/anonymous_socket", Pong.AnonymousSocket
 
   # Serve at "/" the static files from "priv/static" directory.
   #

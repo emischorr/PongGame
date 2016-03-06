@@ -23,9 +23,14 @@ import "phoenix_html"
 import {Socket, LongPoller} from "phoenix"
 
 document.initApp = function(game, mode) {
-    let socket = new Socket("/socket", {
-      // logger: ((kind, msg, data) => { console.log(`${kind}: ${msg}`, data) })
-    })
+    var socket
+    if (mode == "player") {
+      socket = new Socket("/user_socket", {
+        // logger: ((kind, msg, data) => { console.log(`${kind}: ${msg}`, data) })
+      })
+    } else {
+      socket = new Socket("/anonymous_socket")
+    }
 
     socket.connect({token: window.userToken})
 
@@ -43,24 +48,26 @@ document.initApp = function(game, mode) {
     chan.onError(e => console.log("Something went wrong", e))
     chan.onClose(e => console.log("Channel closed", e))
 
-    $(document).off("keydown").on("keydown", e => {
-      // alert("key "+e.keyCode)
-      if (e.keyCode == 19 || e.keyCode == 80) {
-        chan.push("game:pause", {})
-      }
-      if (e.keyCode == 65 || e.keyCode == 37) {
-        chan.push("move:left", {})
-      }
-      if (e.keyCode == 68 || e.keyCode == 39) {
-        chan.push("move:right", {})
-      }
-      if (e.keyCode == 87 || e.keyCode == 38) {
-        chan.push("move:up", {})
-      }
-      if (e.keyCode == 83 || e.keyCode == 40) {
-        chan.push("move:down", {})
-      }
-    })
+    if (mode == "player") {
+      $(document).off("keydown").on("keydown", e => {
+        // alert("key "+e.keyCode)
+        if (e.keyCode == 19 || e.keyCode == 80) {
+          chan.push("game:pause", {})
+        }
+        if (e.keyCode == 65 || e.keyCode == 37) {
+          chan.push("move:left", {})
+        }
+        if (e.keyCode == 68 || e.keyCode == 39) {
+          chan.push("move:right", {})
+        }
+        if (e.keyCode == 87 || e.keyCode == 38) {
+          chan.push("move:up", {})
+        }
+        if (e.keyCode == 83 || e.keyCode == 40) {
+          chan.push("move:down", {})
+        }
+      })
+    }
 
     chan.on("state:update", state => {
       // console.log("update")

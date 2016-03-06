@@ -23,6 +23,8 @@ defmodule Pong.Router do
 
     get "/", GameController, :index
 
+    get "/spectate/:id", GameController, :spectate
+
     resources "sessions", SessionController, only: [ :new, :create ], singleton: true
     get "logout", SessionController, :delete
 
@@ -34,7 +36,8 @@ defmodule Pong.Router do
     pipe_through :browser
     pipe_through :auth
 
-    resources "games", GameController
+    resources "games", GameController, only: [:index, :new, :create]
+    get "/games/:id/play", GameController, :play
     get "/games/:id/control", GameController, :control
     get "/games/:id/:mode", GameController, :show
 

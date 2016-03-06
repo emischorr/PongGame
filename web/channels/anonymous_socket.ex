@@ -1,4 +1,4 @@
-defmodule Pong.UserSocket do
+defmodule Pong.AnonymousSocket do
   use Phoenix.Socket
 
   ## Channels
@@ -6,7 +6,7 @@ defmodule Pong.UserSocket do
 
   ## Transports
   transport :websocket, Phoenix.Transports.WebSocket
-  # transport :longpoll, Phoenix.Transports.LongPoll
+  transport :longpoll, Phoenix.Transports.LongPoll
 
   # Socket params are passed from the client and can
   # be used to verify and authenticate a user. After
@@ -19,14 +19,8 @@ defmodule Pong.UserSocket do
   #
   # See `Phoenix.Token` documentation for examples in
   # performing token verification on connect.
-  def connect(%{"token" => token}, socket) do
-    # max_age: 1209600 is equivalent to two weeks in seconds
-    case Phoenix.Token.verify(socket, "user socket", token, max_age: 1209600) do
-      {:ok, user_id} ->
-        {:ok, assign(socket, :user_id, user_id)}
-      {:error, reason} ->
-        :error
-    end
+  def connect(_params, socket) do
+    {:ok, socket}
   end
 
   # Socket id's are topics that allow you to identify all sockets for a given user:
@@ -39,5 +33,5 @@ defmodule Pong.UserSocket do
   #     Pong.Endpoint.broadcast("users_socket:#{user.id}", "disconnect", %{})
   #
   # Returning `nil` makes this socket anonymous.
-  def id(socket), do: "users_socket:#{socket.assigns.user_id}"
+  def id(_socket), do: nil
 end

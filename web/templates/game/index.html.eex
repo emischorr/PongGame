@@ -3,8 +3,8 @@
 <%= for game <- @games do %>
   <li>
     <span><%= game.name %></span>
-    <%= link "Join as player", to: game_path(@conn, :show, game, mode: "player"), class: "btn btn-default btn-xs" %>
-    <%= link "Join as spectator", to: game_path(@conn, :show, game), class: "btn btn-default btn-xs" %>
+    <%= link "Join as player", to: game_path(@conn, :play, game), class: "btn btn-default btn-xs" %>
+    <%= link "Join as spectator", to: game_path(@conn, :spectate, game), class: "btn btn-default btn-xs" %>
   </li>
 <% end %>
 </ul>
