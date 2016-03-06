@@ -58,7 +58,7 @@ defmodule Pong.GameServer do
     state = %{
       players: %{},
       paddles: %{},
-      balls: %{b1: @start_ball},
+      balls: %{b1: generate_random_ball},
       game: %{running: false, name: options[:name]}
     }
     schedule_next_update
@@ -149,9 +149,7 @@ defmodule Pong.GameServer do
   defp restart(state) do
     if player_count(state) >= @min_player_count do
       Logger.debug "Starting game... [current players: #{player_count(state)}]"
-      rand_fn = &(&1*:random.uniform+1)
-      ball = @start_ball |> Map.update!(:vx, rand_fn) |> Map.update!(:vy, rand_fn)
-      state = put_in(state[:balls], %{b1: ball})
+      state = put_in(state[:balls], %{b1: generate_random_ball})
       put_in(state[:game][:running], true)
     else
       state
@@ -182,6 +180,14 @@ defmodule Pong.GameServer do
     end
   end
 
+  defp generate_random_ball do
+    @start_ball
+    |> Map.update!(:vx, &(&1+Enum.random([-1,0,1])))
+    |> Map.update!(:vy, &(&1+Enum.random([-2,-1,0,1,2])))
+    # TODO: make sure vx and vy are not the same (-> ball will move straight into corner)
+    |> IO.inspect
+  end
+
   defp move_ball(state) do
     update_in state[:balls][:b1], &(%{x: &1.x + &1.vx, y: &1.y + &1.vy, vx: &1.vx, vy: &1.vy})
   end
@@ -205,11 +211,12 @@ defmodule Pong.GameServer do
   end
 
   defp calculate_direction({state, collision}) do
+    reflection_factor = Enum.random(9..11)/10
     case collision do
-      {:collision, :top, _} -> update_in state[:balls][:b1], &(%{x: &1.x, y: &1.y, vx: &1.vx, vy: &1.vy * -1})
-      {:collision, :bottom, _} -> update_in state[:balls][:b1], &(%{x: &1.x, y: &1.y, vx: &1.vx, vy: &1.vy * -1})
-      {:collision, :right, _} -> update_in state[:balls][:b1], &(%{x: &1.x, y: &1.y, vx: &1.vx * -1, vy: &1.vy})
-      {:collision, :left, _} -> update_in state[:balls][:b1], &(%{x: &1.x, y: &1.y, vx: &1.vx * -1, vy: &1.vy})
+      {:collision, :top, _} -> update_in state[:balls][:b1], &(%{x: &1.x, y: &1.y, vx: &1.vx, vy: &1.vy * -reflection_factor})
+      {:collision, :bottom, _} -> update_in state[:balls][:b1], &(%{x: &1.x, y: &1.y, vx: &1.vx, vy: &1.vy * -reflection_factor})
+      {:collision, :right, _} -> update_in state[:balls][:b1], &(%{x: &1.x, y: &1.y, vx: &1.vx * -reflection_factor, vy: &1.vy})
+      {:collision, :left, _} -> update_in state[:balls][:b1], &(%{x: &1.x, y: &1.y, vx: &1.vx * -reflection_factor, vy: &1.vy})
       _ -> state
     end
   end
